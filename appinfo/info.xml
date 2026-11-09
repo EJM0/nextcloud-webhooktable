@@ -19,7 +19,7 @@ Jede eingehende Anfrage wird als neue Zeile in eine Excel-Datei (.xlsx) oder CSV
 	<namespace>WebhookTable</namespace>
 	<category>integration</category>
 	<category>tools</category>
-	<bugs>https://github.com/EMJ/nextcloud-webhooktable/issues</bugs>
+	<bugs>https://github.com/EJM0/nextcloud-webhooktable/issues</bugs>
 	<dependencies>
 		<php min-version="8.1"/>
 		<lib>zip</lib>

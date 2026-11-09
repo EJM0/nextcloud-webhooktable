@@ -17,7 +17,7 @@ Unterstützt Nextcloud 31 bis 35 und PHP 8.1 oder neuer (mit den Erweiterungen `
 
 ```bash
 cd /var/www/nextcloud/apps            # Pfad zu eurem Nextcloud-apps-Ordner
-git clone https://github.com/EMJ/nextcloud-webhooktable.git webhooktable
+git clone https://github.com/EJM0/nextcloud-webhooktable.git webhooktable
 sudo -u www-data php ../occ app:enable webhooktable
 ```
 
