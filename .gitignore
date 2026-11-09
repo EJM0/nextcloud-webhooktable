@@ -1,0 +1,15 @@
+/.idea/
+/*.iml
+
+/vendor/
+/vendor-bin/*/vendor/
+
+/.php-cs-fixer.cache
+/tests/.phpunit.cache
+
+/node_modules/
+# js/ und css/ werden mit eingecheckt, damit die App ohne Build installierbar ist
+/build/
+
+# Source-Maps nicht einchecken
+/js/*.map
