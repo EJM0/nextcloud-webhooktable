@@ -25,3 +25,4 @@
 /vendor-bin
 /vendor/bin
 /*.md
+/HANDOFF.md
