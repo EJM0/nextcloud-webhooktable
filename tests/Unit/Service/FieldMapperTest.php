@@ -25,6 +25,26 @@ class FieldMapperTest extends TestCase {
 		], $rows);
 	}
 
+	public function testForminatorUnderscoreCopiesBecomeRows(): void {
+		$rows = FieldMapper::mapRows([
+			'email_1' => 'a@b.de',
+			'textarea_2' => 'Trikot',
+			'number_1' => '2',
+			'checkbox_1' => 'Ja',
+			'textarea_2_2' => 'Hose',
+			'number_1_2' => '1',
+			'textarea_2_3' => 'Jacke',
+			'number_1_3' => '1',
+			'checkbox_1_3' => 'Ja',
+		], "email_1 = E-Mail\ntextarea_2 = Artikelname\nnumber_1 = Anzahl\ncheckbox_1 = Bedruckt", false);
+
+		$this->assertSame([
+			['E-Mail' => 'a@b.de', 'Artikelname' => 'Trikot', 'Anzahl' => '2', 'Bedruckt' => 'Ja'],
+			['Artikelname' => 'Hose', 'Anzahl' => '1'],
+			['Artikelname' => 'Jacke', 'Anzahl' => '1', 'Bedruckt' => 'Ja'],
+		], $rows);
+	}
+
 	public function testNestedListBecomesRows(): void {
 		$rows = FieldMapper::mapRows([
 			'email-1' => 'a@b.de',

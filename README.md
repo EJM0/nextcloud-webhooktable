@@ -62,7 +62,7 @@ Enthält ein Formular eine wiederholbare Gruppe (in Forminator z. B. die Gruppe 
 | 20.11.2026 10:12 | Max | max@example.org | Trikot | M | 2 |
 | | | | Hose | L | 1 |
 
-Erkannt werden die Kopien, die Formulare für weitere Einträge senden (`text-1`, `text-1-2`, `text-1-3` …), und Listen von Objekten in JSON. Damit auch ein einzelner Artikel als Gruppe gilt, können die Felder der Gruppe unter **„Felder der Gruppe“** eingetragen werden (technischer Name oder Spaltenname). Der Schalter **„Wiederholte Gruppen untereinander schreiben“** schaltet das Verhalten ab; dann landet alles wie bisher in einer Zeile.
+Erkannt werden die Kopien, die Formulare für weitere Einträge senden (Forminator: `textarea_2`, `textarea_2_2`, `textarea_2_3` …; ebenso `text-1`, `text-1-2` …), und Listen von Objekten in JSON. Damit auch ein einzelner Artikel als Gruppe gilt, können die Felder der Gruppe unter **„Felder der Gruppe“** eingetragen werden (technischer Name oder Spaltenname). Der Schalter **„Wiederholte Gruppen untereinander schreiben“** schaltet das Verhalten ab; dann landet alles wie bisher in einer Zeile.
 
 ## Webhook-Schnittstelle
 

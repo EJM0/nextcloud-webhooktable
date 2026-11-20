@@ -60,7 +60,7 @@ class FieldMapper {
 	 *
 	 * Erkannt werden
 	 *  - Kopien mit angehängter Nummer, wie Formulare sie für wiederholte Gruppen senden:
-	 *    text-1, text-1-2, text-1-3 … (das Feld ohne Nummer ist der erste Eintrag)
+	 *    text-1, text-1-2 … bzw. textarea_2, textarea_2_2 … (das Feld ohne Nummer ist der erste Eintrag)
 	 *  - Listen von Objekten in JSON: {"artikel": [{"name": …}, {"name": …}]}
 	 *  - in $groupFields aufgeführte Felder (technischer Name oder Spaltenname, durch Zeilen oder Kommas getrennt),
 	 *    damit auch ein einzelner Eintrag als Gruppe gilt
@@ -97,7 +97,7 @@ class FieldMapper {
 				$entries[] = [$m[3], (int)$m[2], $value];
 				continue;
 			}
-			if (preg_match('/^(.+-\d+)-(\d+)$/u', $key, $m) && (array_key_exists($m[1], $flat) || $isConfigured($m[1]))) {
+			if (preg_match('/^(.+[-_]\d+)[-_](\d+)$/u', $key, $m) && (array_key_exists($m[1], $flat) || $isConfigured($m[1]))) {
 				$copiedBases[$m[1]] = true;
 				$entries[] = [$m[1], max(0, (int)$m[2] - 1), $value];
 				continue;
