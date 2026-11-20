@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\WebhookTable\Service;
 
+use OCA\WebhookTable\Exception\FileLockedException;
 use OCA\WebhookTable\Exception\WebhookException;
 use OCP\Files\File;
 use OCP\Files\Folder;
@@ -31,15 +32,19 @@ class SubmissionService {
 		private LoggerInterface $logger,
 		private XlsxWriter $xlsxWriter,
 		private CsvWriter $csvWriter,
+		private EndpointService $endpoints,
 	) {
 	}
 
 	/**
+	 * Nimmt eine Einsendung an. Ist die Zieldatei gerade gesperrt (z. B. in Nextcloud Office geöffnet),
+	 * wird sie zwischengespeichert und später in Eingangsreihenfolge nachgetragen.
+	 *
 	 * @param array<string, mixed> $endpoint
 	 * @param array<array-key, mixed> $payload
-	 * @return int Anzahl beschriebener Spalten
+	 * @return array{columns: int, queued: bool, pending: int}
 	 */
-	public function store(array $endpoint, array $payload): int {
+	public function store(array $endpoint, array $payload): array {
 		$rows = FieldMapper::mapRows(
 			$payload,
 			(string)$endpoint['mapping'],
@@ -56,9 +61,70 @@ class SubmissionService {
 			unset($rows[0]['Eingang']);
 			$rows[0] = ['Eingang' => $this->now((string)$endpoint['owner'])] + $rows[0];
 		}
+		$columns = count(array_unique(array_merge(...array_map('array_keys', $rows))));
 
-		$lockKey = 'webhooktable/' . $endpoint['id'];
+		$id = (string)$endpoint['id'];
+		$lockKey = 'webhooktable/' . $id;
 		$this->acquireLock($lockKey);
+		try {
+			// Wartende Einsendungen zuerst, damit die Reihenfolge erhalten bleibt
+			$queue = $this->endpoints->getQueue($id);
+			$queue[] = $rows;
+			try {
+				$this->write($endpoint, array_merge(...$queue));
+			} catch (FileLockedException) {
+				$this->endpoints->setQueue($id, $queue);
+				$this->logger->info('Webhook-Tabelle: Zieldatei gesperrt, Einsendung wartet', ['endpoint' => $id, 'pending' => count($queue)]);
+				return ['columns' => $columns, 'queued' => true, 'pending' => count($queue)];
+			}
+			if (count($queue) > 1) {
+				$this->endpoints->setQueue($id, []);
+			}
+		} finally {
+			$this->lockingProvider->releaseLock($lockKey, ILockingProvider::LOCK_EXCLUSIVE);
+		}
+		return ['columns' => $columns, 'queued' => false, 'pending' => 0];
+	}
+
+	/**
+	 * Versucht, wartende Einsendungen nachzutragen.
+	 *
+	 * @param array<string, mixed> $endpoint
+	 * @return int Anzahl nachgetragener Einsendungen (0, wenn die Datei noch gesperrt ist)
+	 */
+	public function flushQueue(array $endpoint): int {
+		$id = (string)$endpoint['id'];
+		$lockKey = 'webhooktable/' . $id;
+		try {
+			$this->lockingProvider->acquireLock($lockKey, ILockingProvider::LOCK_EXCLUSIVE, 'webhooktable');
+		} catch (LockedException) {
+			return 0; // gerade schreibt eine neue Einsendung, die nimmt die Warteschlange mit
+		}
+		try {
+			$queue = $this->endpoints->getQueue($id);
+			if ($queue === []) {
+				return 0;
+			}
+			try {
+				$this->write($endpoint, array_merge(...$queue));
+			} catch (FileLockedException) {
+				return 0;
+			}
+			$this->endpoints->setQueue($id, []);
+			return count($queue);
+		} finally {
+			$this->lockingProvider->releaseLock($lockKey, ILockingProvider::LOCK_EXCLUSIVE);
+		}
+	}
+
+	/**
+	 * Hängt die Zeilen an die Zieldatei an. Alles wird einmal gespeichert.
+	 *
+	 * @param array<string, mixed> $endpoint
+	 * @param list<array<string, string>> $rows
+	 * @throws FileLockedException wenn die Datei gesperrt ist
+	 */
+	private function write(array $endpoint, array $rows): void {
 		try {
 			$folder = $this->getFolder((string)$endpoint['owner'], (string)$endpoint['folder']);
 			$filename = (string)$endpoint['filename'];
@@ -79,7 +145,6 @@ class SubmissionService {
 				// wird neu angelegt
 			}
 
-			// Alle Zeilen einer Einsendung nacheinander anhängen, gespeichert wird einmal
 			$content = $existing;
 			if ($endpoint['format'] === 'csv') {
 				foreach ($rows as $row) {
@@ -104,16 +169,33 @@ class SubmissionService {
 			} else {
 				$file->putContent($content);
 			}
-		} catch (LockedException) {
-			throw new WebhookException('Die Zieldatei ist gerade gesperrt (z. B. geöffnet oder wird synchronisiert). Bitte später erneut senden.');
+		} catch (WebhookException $e) {
+			throw $e;
 		} catch (NotPermittedException $e) {
+			if (self::isLock($e)) {
+				throw new FileLockedException('Zieldatei gesperrt', 0, $e);
+			}
 			$this->logger->warning('Webhook-Tabelle: Schreiben nicht erlaubt', ['exception' => $e]);
 			throw new WebhookException('Keine Schreibrechte für die Zieldatei oder den Ordner.');
-		} finally {
-			$this->lockingProvider->releaseLock($lockKey, ILockingProvider::LOCK_EXCLUSIVE);
+		} catch (\Throwable $e) {
+			if (self::isLock($e)) {
+				throw new FileLockedException('Zieldatei gesperrt', 0, $e);
+			}
+			throw $e;
 		}
+	}
 
-		return count(array_unique(array_merge(...array_map('array_keys', $rows))));
+	/**
+	 * Sperren gibt es in mehreren Formen: Nextcloud-Dateisperre (LockedException),
+	 * Sperre durch Office/„Temporary files lock“ (ManuallyLockedException) – teils verpackt in andere Fehler.
+	 */
+	private static function isLock(\Throwable $error): bool {
+		for ($e = $error, $i = 0; $e !== null && $i < 5; $e = $e->getPrevious(), $i++) {
+			if ($e instanceof LockedException || is_a($e, 'OCP\\Files\\LockNotAcquiredException')) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private function acquireLock(string $key): void {

@@ -62,9 +62,13 @@ class WebhookController extends Controller {
 		}
 
 		try {
-			$columns = $this->submissions->store($endpoint, $payload);
+			$result = $this->submissions->store($endpoint, $payload);
 			$this->endpoints->recordSuccess($id);
-			return new JSONResponse(['status' => 'ok', 'columns' => $columns]);
+			if ($result['queued']) {
+				// Angenommen, wird geschrieben, sobald die Datei nicht mehr gesperrt ist
+				return new JSONResponse(['status' => 'queued', 'columns' => $result['columns'], 'pending' => $result['pending']], Http::STATUS_ACCEPTED);
+			}
+			return new JSONResponse(['status' => 'ok', 'columns' => $result['columns']]);
 		} catch (WebhookException $e) {
 			$this->endpoints->recordError($id, $e->getMessage());
 			return new JSONResponse(['status' => 'error', 'message' => $e->getMessage()], Http::STATUS_UNPROCESSABLE_ENTITY);

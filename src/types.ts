@@ -15,6 +15,7 @@ export interface Endpoint {
 	createdBy: string
 	createdAt: string
 	count: number
+	pending: number
 	lastReceived: string | null
 	lastError: string | null
 	lastErrorAt: string | null

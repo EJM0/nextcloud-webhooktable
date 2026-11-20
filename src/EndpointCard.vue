@@ -200,6 +200,10 @@ async function remove() {
 			Neuer Webhook
 		</h3>
 
+		<NcNoteCard v-if="endpoint?.pending" type="warning">
+			{{ endpoint.pending }} {{ endpoint.pending === 1 ? 'Einsendung wartet' : 'Einsendungen warten' }}, weil die Zieldatei gerade gesperrt ist
+			(z. B. in Nextcloud Office geöffnet). Sie werden automatisch nachgetragen, sobald die Datei geschlossen ist.
+		</NcNoteCard>
 		<NcNoteCard v-if="endpoint?.lastError" type="error">
 			Letzter Fehler ({{ formatDate(endpoint.lastErrorAt) }}): {{ endpoint.lastError }}
 		</NcNoteCard>

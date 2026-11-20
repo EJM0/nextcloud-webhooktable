@@ -12,8 +12,10 @@ Jede eingehende Anfrage wird als neue Zeile in eine Excel-Datei (.xlsx) oder CSV
 * Neue Formularfelder werden automatisch als neue Spalten ergänzt
 * Eigene Spalten und Formatierungen in der Tabelle bleiben erhalten
 * Optionale Feldzuordnung (z. B. name-1 = Name)
+* Mehrere Artikel einer Bestellung untereinander
+* Ist die Tabelle gerade geöffnet/gesperrt, werden Einsendungen nachgetragen, sobald sie frei ist
 * Die Einstellungen gelten gemeinsam für alle Administratoren]]></description>
-	<version>1.1.0</version>
+	<version>1.2.0</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author>EMJ</author>
 	<namespace>WebhookTable</namespace>
@@ -26,6 +28,9 @@ Jede eingehende Anfrage wird als neue Zeile in eine Excel-Datei (.xlsx) oder CSV
 		<lib>dom</lib>
 		<nextcloud min-version="31" max-version="35"/>
 	</dependencies>
+	<background-jobs>
+		<job>OCA\WebhookTable\BackgroundJob\FlushQueue</job>
+	</background-jobs>
 	<settings>
 		<admin>OCA\WebhookTable\Settings\Admin</admin>
 		<admin-section>OCA\WebhookTable\Settings\AdminSection</admin-section>

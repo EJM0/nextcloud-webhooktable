@@ -21,6 +21,7 @@ use OCP\Security\ISecureRandom;
 class EndpointService {
 	private const KEY_ENDPOINTS = 'endpoints';
 	private const KEY_STATS_PREFIX = 'stats_';
+	private const KEY_QUEUE_PREFIX = 'queue_';
 
 	public const FORMATS = ['xlsx', 'csv'];
 
@@ -112,6 +113,52 @@ class EndpointService {
 		unset($endpoints[$id]);
 		$this->store($endpoints);
 		$this->appConfig->deleteKey(Application::APP_ID, self::KEY_STATS_PREFIX . $id);
+		$this->appConfig->deleteKey(Application::APP_ID, self::KEY_QUEUE_PREFIX . $id);
+	}
+
+	/**
+	 * Einsendungen, die wegen einer gesperrten Zieldatei noch nicht geschrieben werden konnten.
+	 * Jede Einsendung ist eine Liste von Zeilen (Spaltenname => Wert), in Eingangsreihenfolge.
+	 *
+	 * @return list<list<array<string, string>>>
+	 */
+	public function getQueue(string $id): array {
+		$this->appConfig->clearCache(true);
+		$raw = $this->appConfig->getValueString(Application::APP_ID, self::KEY_QUEUE_PREFIX . $id, '[]', true);
+		$data = json_decode($raw, true);
+		return is_array($data) ? array_values($data) : [];
+	}
+
+	/**
+	 * @param list<list<array<string, string>>> $queue
+	 */
+	public function setQueue(string $id, array $queue): void {
+		if ($queue === []) {
+			$this->appConfig->deleteKey(Application::APP_ID, self::KEY_QUEUE_PREFIX . $id);
+			return;
+		}
+		$this->appConfig->setValueString(
+			Application::APP_ID,
+			self::KEY_QUEUE_PREFIX . $id,
+			json_encode(array_values($queue), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+			true,
+			true, // enthält personenbezogene Daten -> verschlüsselt speichern
+		);
+	}
+
+	/**
+	 * IDs aller Endpunkte, für die Einsendungen warten.
+	 *
+	 * @return list<string>
+	 */
+	public function idsWithQueue(): array {
+		$ids = [];
+		foreach (array_keys($this->load()) as $id) {
+			if ($this->getQueue((string)$id) !== []) {
+				$ids[] = (string)$id;
+			}
+		}
+		return $ids;
 	}
 
 	/**
@@ -173,6 +220,7 @@ class EndpointService {
 		$endpoint['lastReceived'] = $stats['lastReceived'] ?? null;
 		$endpoint['lastError'] = $stats['lastError'] ?? null;
 		$endpoint['lastErrorAt'] = $stats['lastErrorAt'] ?? null;
+		$endpoint['pending'] = count($this->getQueue((string)$endpoint['id']));
 		// Webhooks von vor dieser Einstellung teilen Gruppen ebenfalls auf
 		$endpoint['splitGroups'] = (bool)($endpoint['splitGroups'] ?? true);
 		$endpoint['groupFields'] = (string)($endpoint['groupFields'] ?? '');

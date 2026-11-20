@@ -64,6 +64,10 @@ Enthält ein Formular eine wiederholbare Gruppe (in Forminator z. B. die Gruppe 
 
 Erkannt werden die Kopien, die Formulare für weitere Einträge senden (Forminator: `textarea_2`, `textarea_2_2`, `textarea_2_3` …; ebenso `text-1`, `text-1-2` …), und Listen von Objekten in JSON. Damit auch ein einzelner Artikel als Gruppe gilt, können die Felder der Gruppe unter **„Felder der Gruppe“** eingetragen werden (technischer Name oder Spaltenname). Der Schalter **„Wiederholte Gruppen untereinander schreiben“** schaltet das Verhalten ab; dann landet alles wie bisher in einer Zeile.
 
+### Gesperrte Tabelle
+
+Ist die Tabelle gerade gesperrt, etwa weil sie in Nextcloud Office geöffnet ist, geht keine Bestellung verloren: Die Einsendung wird zwischengespeichert, der Webhook antwortet mit `202` und `"status": "queued"`. Sobald die Sperre weg ist, trägt ein Hintergrundjob die wartenden Einsendungen in Eingangsreihenfolge und mit ihrer ursprünglichen Eingangszeit nach (oder die nächste Einsendung nimmt sie mit). Der Hintergrundjob braucht den Nextcloud-Cron (Einstellungen → Grundeinstellungen → Hintergrundaufgaben: „Cron“). In den Einstellungen des Webhooks steht, wie viele Einsendungen gerade warten.
+
 ## Webhook-Schnittstelle
 
 | | |
