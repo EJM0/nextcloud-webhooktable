@@ -48,10 +48,106 @@ class FieldMapper {
 	 * @return array<string, string> Spaltenname => Wert (Reihenfolge wie in der Nutzlast)
 	 */
 	public static function map(array $payload, string $mapping, bool $onlyMapped): array {
+		$flat = [];
+		self::flatten($payload, '', $flat);
+		return self::mapFlat($flat, self::parseMapping($mapping), $onlyMapped);
+	}
+
+	/**
+	 * Wie map(), aber wiederholte Gruppen (z. B. mehrere Artikel einer Bestellung) werden zu eigenen Zeilen:
+	 * Die erste Zeile enthält alle übrigen Felder (Name, E-Mail …) und den ersten Eintrag der Gruppe,
+	 * jede weitere Zeile nur die Felder des nächsten Eintrags – alles andere bleibt dort leer.
+	 *
+	 * Erkannt werden
+	 *  - Kopien mit angehängter Nummer, wie Formulare sie für wiederholte Gruppen senden:
+	 *    text-1, text-1-2, text-1-3 … (das Feld ohne Nummer ist der erste Eintrag)
+	 *  - Listen von Objekten in JSON: {"artikel": [{"name": …}, {"name": …}]}
+	 *  - in $groupFields aufgeführte Felder (technischer Name oder Spaltenname, durch Zeilen oder Kommas getrennt),
+	 *    damit auch ein einzelner Eintrag als Gruppe gilt
+	 *
+	 * @param array<array-key, mixed> $payload
+	 * @return list<array<string, string>> Zeilen, jede Spaltenname => Wert
+	 */
+	public static function mapRows(array $payload, string $mapping, bool $onlyMapped, bool $split = true, string $groupFields = ''): array {
 		$map = self::parseMapping($mapping);
 		$flat = [];
 		self::flatten($payload, '', $flat);
+		if (!$split) {
+			return [self::mapFlat($flat, $map, $onlyMapped)];
+		}
 
+		$configured = [];
+		foreach (preg_split('/[\r\n,;]+/', $groupFields) ?: [] as $name) {
+			$name = mb_strtolower(trim($name));
+			if ($name !== '') {
+				$configured[$name] = true;
+			}
+		}
+		$isConfigured = static function (string $key) use ($configured, $map): bool {
+			return isset($configured[mb_strtolower($key)])
+				|| (isset($map[$key]) && $map[$key] !== '' && isset($configured[mb_strtolower($map[$key])]));
+		};
+
+		// Je Feld: zu welchem Eintrag der Gruppe es gehört (null = kein Gruppenfeld) und unter welchem Namen
+		$entries = [];
+		$copiedBases = [];
+		foreach ($flat as $key => $value) {
+			$key = (string)$key;
+			if (preg_match('/^(.+?)\.(\d+)\.(.+)$/u', $key, $m)) {
+				$entries[] = [$m[3], (int)$m[2], $value];
+				continue;
+			}
+			if (preg_match('/^(.+-\d+)-(\d+)$/u', $key, $m) && (array_key_exists($m[1], $flat) || $isConfigured($m[1]))) {
+				$copiedBases[$m[1]] = true;
+				$entries[] = [$m[1], max(0, (int)$m[2] - 1), $value];
+				continue;
+			}
+			$entries[] = [$key, null, $value];
+		}
+		foreach ($entries as $i => [$key, $item, $value]) {
+			if ($item === null && (isset($copiedBases[$key]) || $isConfigured($key))) {
+				$entries[$i][1] = 0;
+			}
+		}
+
+		$items = [];
+		foreach ($entries as [, $item]) {
+			if ($item !== null) {
+				$items[$item] = true;
+			}
+		}
+		if ($items === []) {
+			return [self::mapFlat($flat, $map, $onlyMapped)];
+		}
+		ksort($items);
+		$order = array_keys($items);
+		$first = $order[0];
+
+		$rows = [];
+		foreach ($order as $item) {
+			$part = [];
+			foreach ($entries as [$key, $entryItem, $value]) {
+				if ($entryItem === $item || ($item === $first && $entryItem === null)) {
+					if (!array_key_exists($key, $part) || $part[$key] === '') {
+						$part[$key] = $value;
+					}
+				}
+			}
+			$row = self::mapFlat($part, $map, $onlyMapped);
+			if ($item !== $first && implode('', $row) === '') {
+				continue; // leerer, angefangener Eintrag
+			}
+			$rows[] = $row;
+		}
+		return $rows;
+	}
+
+	/**
+	 * @param array<string, string> $flat
+	 * @param array<string, string> $map
+	 * @return array<string, string>
+	 */
+	private static function mapFlat(array $flat, array $map, bool $onlyMapped): array {
 		$row = [];
 		foreach ($flat as $key => $value) {
 			if (array_key_exists($key, $map)) {

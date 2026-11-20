@@ -37,16 +37,24 @@ class SubmissionService {
 	/**
 	 * @param array<string, mixed> $endpoint
 	 * @param array<array-key, mixed> $payload
-	 * @return int Anzahl geschriebener Spalten
+	 * @return int Anzahl beschriebener Spalten
 	 */
 	public function store(array $endpoint, array $payload): int {
-		$row = FieldMapper::map($payload, (string)$endpoint['mapping'], (bool)$endpoint['onlyMapped']);
-		if ($row === []) {
+		$rows = FieldMapper::mapRows(
+			$payload,
+			(string)$endpoint['mapping'],
+			(bool)$endpoint['onlyMapped'],
+			(bool)($endpoint['splitGroups'] ?? true),
+			(string)($endpoint['groupFields'] ?? ''),
+		);
+		$rows = array_values(array_filter($rows, static fn (array $r): bool => $r !== []));
+		if ($rows === []) {
 			throw new WebhookException('Die Anfrage enthielt keine verwertbaren Felder.');
 		}
+		// Datum und Uhrzeit nur in der ersten Zeile: Folgezeilen gehören zur selben Einsendung
 		if ($endpoint['timestamp']) {
-			unset($row['Eingang']);
-			$row = ['Eingang' => $this->now((string)$endpoint['owner'])] + $row;
+			unset($rows[0]['Eingang']);
+			$rows[0] = ['Eingang' => $this->now((string)$endpoint['owner'])] + $rows[0];
 		}
 
 		$lockKey = 'webhooktable/' . $endpoint['id'];
@@ -71,15 +79,21 @@ class SubmissionService {
 				// wird neu angelegt
 			}
 
+			// Alle Zeilen einer Einsendung nacheinander anhängen, gespeichert wird einmal
+			$content = $existing;
 			if ($endpoint['format'] === 'csv') {
-				$content = $this->csvWriter->append($existing, $row);
+				foreach ($rows as $row) {
+					$content = $this->csvWriter->append($content, $row);
+				}
 			} else {
 				$tmp = $this->tempManager->getTemporaryFile('.xlsx');
 				if ($tmp === false) {
 					throw new WebhookException('Temporäre Datei konnte nicht angelegt werden.');
 				}
 				try {
-					$content = $this->xlsxWriter->append($existing, $row, $tmp);
+					foreach ($rows as $row) {
+						$content = $this->xlsxWriter->append($content, $row, $tmp);
+					}
 				} finally {
 					@unlink($tmp);
 				}
@@ -99,7 +113,7 @@ class SubmissionService {
 			$this->lockingProvider->releaseLock($lockKey, ILockingProvider::LOCK_EXCLUSIVE);
 		}
 
-		return count($row);
+		return count(array_unique(array_merge(...array_map('array_keys', $rows))));
 	}
 
 	private function acquireLock(string $key): void {

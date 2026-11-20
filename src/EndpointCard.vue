@@ -40,6 +40,8 @@ function toForm(e: Endpoint | null): EndpointInput {
 		timestamp: e?.timestamp ?? true,
 		mapping: e?.mapping ?? '',
 		onlyMapped: e?.onlyMapped ?? false,
+		splitGroups: e?.splitGroups ?? true,
+		groupFields: e?.groupFields ?? '',
 	}
 }
 
@@ -338,6 +340,17 @@ async function remove() {
 			<NcCheckboxRadioSwitch v-model="form.onlyMapped" type="switch">
 				Nur zugeordnete Felder speichern
 			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch v-model="form.splitGroups" type="switch">
+				Wiederholte Gruppen (z. B. mehrere Artikel) untereinander schreiben
+			</NcCheckboxRadioSwitch>
+			<NcTextArea
+				v-if="form.splitGroups"
+				v-model="form.groupFields"
+				label="Felder der Gruppe (optional)"
+				resize="vertical"
+				:class="$style.mapping"
+				placeholder="text-1&#10;text-2&#10;select-1&#10;number-1&#10;checkbox-1"
+				helper-text="Jeder Artikel bekommt eine eigene Zeile. Name, E-Mail usw. stehen nur in der ersten Zeile einer Bestellung. Wiederholte Felder (text-1-2, text-1-3 …) werden automatisch erkannt; hier aufgeführte Felder (technischer Name oder Spaltenname) gelten auch bei nur einem Artikel als Gruppe." />
 
 			<p :class="$style.meta">
 				Zieldatei: <strong>{{ form.owner }}</strong>{{ targetPath }}

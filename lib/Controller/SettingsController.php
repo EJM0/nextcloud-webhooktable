@@ -92,7 +92,7 @@ class SettingsController extends Controller {
 	 * @return array<string, mixed>
 	 */
 	private function input(): array {
-		$keys = ['name', 'enabled', 'owner', 'folder', 'filename', 'format', 'timestamp', 'mapping', 'onlyMapped'];
+		$keys = ['name', 'enabled', 'owner', 'folder', 'filename', 'format', 'timestamp', 'mapping', 'onlyMapped', 'splitGroups', 'groupFields'];
 		$input = [];
 		foreach ($keys as $key) {
 			$value = $this->request->getParam($key);
@@ -100,7 +100,7 @@ class SettingsController extends Controller {
 				$input[$key] = $value;
 			}
 		}
-		foreach (['enabled', 'timestamp', 'onlyMapped'] as $bool) {
+		foreach (['enabled', 'timestamp', 'onlyMapped', 'splitGroups'] as $bool) {
 			if (isset($input[$bool])) {
 				$input[$bool] = filter_var($input[$bool], FILTER_VALIDATE_BOOLEAN);
 			}

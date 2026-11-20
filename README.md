@@ -53,6 +53,17 @@ consent-1 =
 
 Eine leere rechte Seite (`consent-1 =`) bedeutet: Dieses Feld wird nicht gespeichert. Mit **„Nur zugeordnete Felder speichern“** landen ausschließlich die aufgeführten Felder in der Tabelle.
 
+### Mehrere Artikel pro Bestellung
+
+Enthält ein Formular eine wiederholbare Gruppe (in Forminator z. B. die Gruppe „Artikel“ mit Artikelname, Art.-Nummer, Größe, Anzahl, Bedruckt), bekommt jeder Artikel eine eigene Zeile. Die übrigen Angaben (Name, E-Mail, Telefon, Einverständnis) und „Eingang“ stehen nur in der ersten Zeile – eine neue Bestellung erkennt man also an einer neuen E-Mail-Adresse:
+
+| Eingang | Name | E-Mail | Artikelname | Größe | Anzahl |
+|---|---|---|---|---|---|
+| 20.11.2026 10:12 | Max | max@example.org | Trikot | M | 2 |
+| | | | Hose | L | 1 |
+
+Erkannt werden die Kopien, die Formulare für weitere Einträge senden (`text-1`, `text-1-2`, `text-1-3` …), und Listen von Objekten in JSON. Damit auch ein einzelner Artikel als Gruppe gilt, können die Felder der Gruppe unter **„Felder der Gruppe“** eingetragen werden (technischer Name oder Spaltenname). Der Schalter **„Wiederholte Gruppen untereinander schreiben“** schaltet das Verhalten ab; dann landet alles wie bisher in einer Zeile.
+
 ## Webhook-Schnittstelle
 
 | | |

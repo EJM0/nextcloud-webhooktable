@@ -173,6 +173,9 @@ class EndpointService {
 		$endpoint['lastReceived'] = $stats['lastReceived'] ?? null;
 		$endpoint['lastError'] = $stats['lastError'] ?? null;
 		$endpoint['lastErrorAt'] = $stats['lastErrorAt'] ?? null;
+		// Webhooks von vor dieser Einstellung teilen Gruppen ebenfalls auf
+		$endpoint['splitGroups'] = (bool)($endpoint['splitGroups'] ?? true);
+		$endpoint['groupFields'] = (string)($endpoint['groupFields'] ?? '');
 		return $endpoint;
 	}
 
@@ -224,6 +227,11 @@ class EndpointService {
 		// Syntax prüfen, Fehler werden als Exception gemeldet
 		FieldMapper::parseMapping($mapping);
 
+		$groupFields = trim((string)($input['groupFields'] ?? ($base['groupFields'] ?? '')));
+		if (mb_strlen($groupFields) > 5000) {
+			throw new WebhookException('Die Liste der Gruppenfelder ist zu lang.');
+		}
+
 		return array_merge($base, [
 			'name' => $name,
 			'enabled' => (bool)($input['enabled'] ?? true),
@@ -234,6 +242,8 @@ class EndpointService {
 			'timestamp' => (bool)($input['timestamp'] ?? true),
 			'mapping' => $mapping,
 			'onlyMapped' => (bool)($input['onlyMapped'] ?? false),
+			'splitGroups' => (bool)($input['splitGroups'] ?? ($base['splitGroups'] ?? true)),
+			'groupFields' => $groupFields,
 		]);
 	}
 

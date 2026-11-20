@@ -13,7 +13,7 @@ Jede eingehende Anfrage wird als neue Zeile in eine Excel-Datei (.xlsx) oder CSV
 * Eigene Spalten und Formatierungen in der Tabelle bleiben erhalten
 * Optionale Feldzuordnung (z. B. name-1 = Name)
 * Die Einstellungen gelten gemeinsam für alle Administratoren]]></description>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 	<licence>AGPL-3.0-or-later</licence>
 	<author>EMJ</author>
 	<namespace>WebhookTable</namespace>

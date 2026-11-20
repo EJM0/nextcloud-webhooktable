@@ -10,6 +10,8 @@ export interface Endpoint {
 	timestamp: boolean
 	mapping: string
 	onlyMapped: boolean
+	splitGroups: boolean
+	groupFields: string
 	createdBy: string
 	createdAt: string
 	count: number
@@ -18,4 +20,4 @@ export interface Endpoint {
 	lastErrorAt: string | null
 }
 
-export type EndpointInput = Pick<Endpoint, 'name' | 'enabled' | 'owner' | 'folder' | 'filename' | 'format' | 'timestamp' | 'mapping' | 'onlyMapped'>
+export type EndpointInput = Pick<Endpoint, 'name' | 'enabled' | 'owner' | 'folder' | 'filename' | 'format' | 'timestamp' | 'mapping' | 'onlyMapped' | 'splitGroups' | 'groupFields'>
